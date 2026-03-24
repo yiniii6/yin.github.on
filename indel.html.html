@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>汉字王国大闯关</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&family=Noto+Sans+SC:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --bg: #1a1a2e;
+            --bg-light: #16213e;
+            --fg: #eaeaea;
+            --muted: #a0a0a0;
+            --accent: #ff6b35;
+            --accent-light: #ff8c5a;
+            --success: #4ade80;
+            --error: #f87171;
+            --card: rgba(30, 41, 59, 0.9);
+            --border: rgba(255, 107, 53, 0.3);
+            --gold: #ffd700;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background: var(--bg);
+            color: var(--fg);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        .title-font {
+            font-family: 'ZCOOL KuaiLe', cursive;
+        }
+        
+        /* 动态背景 */
+        .bg-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+        
+        /* 漂浮汉字 */
+        .floating-char {
+            position: absolute;
+            font-family: 'ZCOOL KuaiLe', cursive;
+            color: rgba(255, 107, 53, 0.08);
+            animation: floatUp 20s linear infinite;
+            pointer-events: none;
+            user-select: none;
+        }
+        
+        @keyframes floatUp {
+            0% {
+                transform: translateY(100vh) rotate(0deg);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-100px) rotate(360deg);
+                opacity: 0;
+            }
+        }
+        
+        /* 进度条 */
+        .progress-bar {
+            height: 6px;
+            background: var(--bg-light);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent), var(--gold));
+            transition: width 0.5s ease;
+        }
+        
+        /* 游戏卡片 */
+        .game-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+        
+        .game-card:hover {
+            border-color: var(--accent);
+            box-shadow: 0 0 30px rgba(255, 107, 53, 0.15);
+        }
+        
+        /* 按钮 */
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent), var(--accent-light));
+            color: white;
+            padding: 14px 40px;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 1.1rem;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn-primary::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: left 0.5s ease;
+        }
+        
+        .btn-primary:hover::before {
+            left: 100%;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(255, 107, 53, 0.4);
+        }
+        
+        .btn-primary:active {
+            transform: translateY(-1px);
+        }
+        
+        /* 配对游戏 */
+        .match-item {
+            padding: 16px 24px;
+            background: var(--bg-light);
+            border: 2px solid transparent;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1.25rem;
+            text-align: center;
+        }
+        
+        .match-item:hover:not(.selected):not(.matched) {
+            border-color: var(--accent);
+            background: rgba(255, 107, 53, 0.1);
+        }
+        
+        .match-item.selected {
+            border-color: var(--accent);
+            background: rgba(255, 107, 53, 0.2);
+            box-shadow: 0 0 20px rgba(255, 107, 53, 0.3);
+        }
+        
+        .match-item.matched {
+            border-color: var(--success);
+            background: rgba(74, 222, 128, 0.15);
+            pointer-events: none;
+        }
+        
+        .match-item.wrong {
+            animation: shake 0.5s ease;
+            border-color: var(--error);
+            background: rgba(248, 113, 113, 0.15);
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-8px); }
+            40%, 80% { transform: translateX(8px); }
+        }
+        
+        /* 输入框 */
+        .input-field {
+            width: 100%;
+            padding: 14px 18px;
+            background: var(--bg-light);
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            color: var(--fg);
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+        }
+        
+        .input-field:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 15px rgba(255, 107, 53, 0.2);
+        }
+        
+        .input-field.correct {
+            border-color: var(--success);
+        }
+        
+        .input-field.incorrect {
+            border-color: var(--error);
+        }
+        
+        /* 句子展示 */
+        .sentence-box {
+            background: var(--bg-light);
+            padding: 20px 24px;
+            border-radius: 12px;
+            font-size: 1.2rem;
+            line-height: 2;
+            border-left: 4px solid var(--accent);
+        }
+        
+        .wrong-char {
+            color: var(--error);
+            text-decoration: line-through;
+            background: rgba(248, 113, 113, 0.2);
+            padding: 2px 6px;
+            border-radius: 4px;
+            cursor: help;
+            position: relative;
+        }
+        
+        .wrong-char::after {
+            content: attr(data-correct);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--success);
+            color: var(--bg);
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            opacity: 0;
+            transition: opacity 0.3s;
+            white-space: nowrap;
+        }
+        
+        .wrong-char:hover::after {
+            opacity: 1;
+        }
+        
+        /* 分数动画 */
+        .score-popup {
+            position: fixed;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--gold);
+            pointer-events: none;
+            animation: scoreUp 1s ease-out forwards;
+            z-index: 100;
+        }
+        
+        @keyframes scoreUp {
+            0% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-60px) scale(1.2);
+            }
+        }
+        
+        /* 计时器 */
+        .timer-ring {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: conic-gradient(var(--accent) var(--progress, 100%), var(--bg-light) 0);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        
+        .timer-ring::before {
+            content: '';
+            position: absolute;
+            width: 56px;
+            height: 56px;
+            background: var(--card);
+            border-radius: 50%;
+        }
+        
+        .timer-text {
+            position: relative;
+            z-index: 1;
+            font-weight: 700;
+            font-size: 0.9rem;
+        }
+        
+        /* 排行榜 */
+        .rank-item {
+            display: flex;
+            align-items: center;
+            padding: 16px;
+            background: var(--bg-light);
+            border-radius: 12px;
+            margin-bottom: 10px;
+            transition: all 0.3s ease;
+        }
+        
+        .rank-item:hover {
+            background: rgba(255, 107, 53, 0.1);
+        }
+        
+        .rank-badge {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            margin-right: 16px;
+        }
+        
+        .rank-1 { background: linear-gradient(135deg, #ffd700, #ffb700); color: var(--bg); }
+        .rank-2 { background: linear-gradient(135deg, #c0c0c0, #a0a0a0); color: var(--bg); }
+        .rank-3 { background: linear-gradient(135deg, #cd7f32, #b87333); color: var(--bg); }
+        .rank-other { background: var(--bg); border: 2px solid var(--border); }
+        
+        /* 关卡切换动画 */
+        .section {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.5s ease;
+            display: none;
+        }
+        
+        .section.active {
+            opacity: 1;
+            transform: translateY(0);
+            display: block;
+        }
+        
+        /* 星星动画 */
+        .stars-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 50;
+        }
+        
+        .star {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: var(--gold);
+            clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+            animation: starFall 1s ease-out forwards;
+        }
+        
+        @keyframes starFall {
+            0% {
+                opacity: 1;
+                transform: translateY(0) rotate(0deg) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(200px) rotate(180deg) scale(0);
+            }
+        }
+        
+        /* 响应式 */
+        @media (max-width: 768px) {
+            .match-container {
+                flex-direction: column;
+            }
+            
+            .timer-ring {
+                width: 60px;
+                height: 60px;
+            }
+            
+            .timer-ring::before {
+                width: 48px;
+                height: 48px;
+            }
+        }
+        
+        /* 减少动画 */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 动态背景 -->
+    <div class="bg-canvas" id="bgCanvas"></div>
+    
+    <!-- 星星容器 -->
+    <div class="stars-container" id="starsContainer"></div>
+    
+    <div class="relative z-10 min-h-screen p-4 md:p-8">
+        <div class="max-w-4xl mx-auto">
+            
+            <!-- 顶部状态栏 -->
+            <header class="flex items-center justify-between mb-6">
+                <div>
+                    <h1 class="title-font text-3xl md:text-4xl" style="color: var(--accent);">汉字王国大闯关</h1>
+                    <p class="text-sm mt-1" style="color: var(--muted);">飞象老师游戏化课堂</p>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="text-right">
+                        <div class="text-sm" style="color: var(--muted);">当前得分</div>
+                        <div class="text-2xl font-bold" style="color: var(--gold);" id="scoreDisplay">0</div>
+                    </div>
+                    <div class="timer-ring" id="timerRing">
+                        <span class="timer-text" id="timerText">15:00</span>
+                    </div>
+                </div>
+            </header>
+            
+            <!-- 进度条 -->
+            <div class="progress-bar mb-8">
+                <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+            </div>
+            
+            <!-- 首页 -->
+            <section id="home" class="section active">
+                <div class="game-card p-8 md:p-12">
+                    <div class="text-center mb-8">
+                        <h2 class="title-font text-4xl mb-4" style="color: var(--fg);">准备好闯关了吗？</h2>
+                        <p style="color: var(--muted);" class="text-lg">共三关，限时15分钟，答对越多分数越高</p>
+                    </div>
+                    
+                    <div class="grid md:grid-cols-3 gap-4 mb-8">
+                        <div class="p-4 rounded-xl" style="background: var(--bg-light);">
+                            <div class="text-2xl font-bold mb-2" style="color: var(--accent);">第一关</div>
+                            <div style="color: var(--muted);">汉字配对</div>
+                            <div class="text-sm mt-2" style="color: var(--fg);">将汉字与图片正确连线</div>
+                        </div>
+                        <div class="p-4 rounded-xl" style="background: var(--bg-light);">
+                            <div class="text-2xl font-bold mb-2" style="color: var(--accent);">第二关</div>
+                            <div style="color: var(--muted);">火眼金睛</div>
+                            <div class="text-sm mt-2" style="color: var(--fg);">找出句子中的错别字</div>
+                        </div>
+                        <div class="p-4 rounded-xl" style="background: var(--bg-light);">
+                            <div class="text-2xl font-bold mb-2" style="color: var(--accent);">第三关</div>
+                            <div style="color: var(--muted);">组词达人</div>
+                            <div class="text-sm mt-2" style="color: var(--fg);">给生字组出正确词语</div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center">
+                        <button class="btn-primary" onclick="startGame()">开始闯关</button>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- 第一关：汉字配对 -->
+            <section id="level1" class="section">
+                <div class="game-card p-6 md:p-8">
+                    <div class="flex items-center gap-3 mb-6">
+                        <span class="px-4 py-1 rounded-full text-sm font-bold" style="background: var(--accent); color: white;">第一关</span>
+                        <h2 class="title-font text-2xl">汉字配对</h2>
+                    </div>
+                    
+                    <p class="mb-6" style="color: var(--muted);">先点击左侧汉字，再点击右侧对应的图片完成配对</p>
+                    
+                    <div class="grid md:grid-cols-2 gap-8 match-container">
+                        <div class="space-y-3" id="charColumn"></div>
+                        <div class="space-y-3" id="picColumn"></div>
+                    </div>
+                    
+                    <div class="flex justify-between items-center mt-8">
+                        <div style="color: var(--muted);">
+                            已配对：<span id="matchCount" style="color: var(--accent);">0</span> / 5
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- 第二关：火眼金睛 -->
+            <section id="level2" class="section">
+                <div class="game-card p-6 md:p-8">
+                    <div class="flex items-center gap-3 mb-6">
+                        <span class="px-4 py-1 rounded-full text-sm font-bold" style="background: var(--accent); color: white;">第二关</span>
+                        <h2 class="title-font text-2xl">火眼金睛</h2>
+                    </div>
+                    
+                    <p class="mb-6" style="color: var(--muted);">找出句子中的错别字，在输入框中写出正确的字</p>
+                    
+                    <div class="space-y-6" id="sentenceList"></div>
+                </div>
+            </section>
+            
+            <!-- 第三关：组词达人 -->
+            <section id="level3" class="section">
+                <div class="game-card p-6 md:p-8">
+                    <div class="flex items-center gap-3 mb-6">
+                        <span class="px-4 py-1 rounded-full text-sm font-bold" style="background: var(--accent); color: white;">第三关</span>
+                        <h2 class="title-font text-2xl">组词达人</h2>
+                    </div>
+                    
+                    <p class="mb-6" style="color: var(--muted);">给下面的生字组词，每个字至少组一个词</p>
+                    
+                    <div class="flex flex-wrap gap-3 mb-6" id="wordChars"></div>
+                    
+                    <div class="space-y-4" id="wordInputs"></div>
+                    
+                    <div class="mt-8 text-center">
+                        <button class="btn-primary" onclick="submitWords()">提交答案</button>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- 结果页 -->
+            <section id="result" class="section">
+                <div class="game-card p-6 md:p-8">
+                    <div class="text-center mb-8">
+                        <h2 class="title-font text-4xl mb-4" style="color: var(--gold);">闯关完成</h2>
+                        <div class="text-6xl font-bold mb-2" style="color: var(--accent);" id="finalScoreDisplay">0</div>
+                        <div style="color: var(--muted);">总得分</div>
+                    </div>
+                    
+                    <div class="mb-8">
+                        <h3 class="text-xl font-bold mb-4" style="color: var(--fg);">闯关详情</h3>
+                        <div class="space-y-3" id="resultDetails"></div>
+                    </div>
+                    
+                    <div class="mb-8">
+                        <h3 class="text-xl font-bold mb-4" style="color: var(--fg);">排行榜</h3>
+                        <div id="rankingList"></div>
+                    </div>
+                    
+                    <div class="text-center">
+                        <button class="btn-primary" onclick="resetGame()">再玩一次</button>
+                    </div>
+                </div>
+            </section>
+            
+        </div>
+    </div>
+    
+    <script>
+        // 游戏数据
+        const gameData = {
+            level1: {
+                chars: [
+                    { char: '山', pic: '⛰️', desc: '高高的山峰' },
+                    { char: '水', pic: '💧', desc: '清澈的流水' },
+                    { char: '日', pic: '☀️', desc: '温暖的太阳' },
+                    { char: '月', pic: '🌙', desc: '皎洁的月亮' },
+                    { char: '火', pic: '🔥', desc: '热烈的火焰' }
+                ]
+            },
+            level2: [
+                { sentence: '我每天都要喝开氷', wrong: '氷', correct: '水', hint: '一种液体' },
+                { sentence: '爸爸在山上种了很多树', wrong: '山', correct: '山', hint: '这个字是对的' },
+                { sentence: '今天的大刧很圆', wrong: '刧', correct: '月', hint: '晚上的天体' },
+                { sentence: '太阳从东方升 起', wrong: ' ', correct: '无错误', hint: '检查是否有错字' },
+                { sentence: '森林里冒着熊熊大伙', wrong: '伙', correct: '火', hint: '燃烧的东西' }
+            ].filter(item => item.wrong !== item.correct || item.correct === '无错误'),
+            level3: [
+                { char: '山', answers: ['大山', '高山', '山上', '山水', '山川', '山脚'] },
+                { char: '水', answers: ['河水', '喝水', '水果', '开水', '水面', '雨水'] },
+                { char: '日', answers: ['日记', '日期', '生日', '日月', '日光', '今日'] },
+                { char: '月', answers: ['月亮', '月光', '月饼', '日月', '岁月', '月色'] },
+                { char: '火', answers: ['火车', '大火', '火焰', '火山', '灯火', '火锅'] }
+            ]
+        };
+        
+        // 游戏状态
+        let state = {
+            currentLevel: 0,
+            score: 0,
+            timeLeft: 900,
+            timer: null,
+            selectedChar: null,
+            matchedPairs: [],
+            levelScores: [0, 0, 0],
+            levelTimes: [0, 0, 0]
+        };
+        
+        // 初始化漂浮汉字背景
+        function initFloatingChars() {
+            const canvas = document.getElementById('bgCanvas');
+            const chars = ['山', '水', '日', '月', '火', '木', '土', '金', '人', '口', '手', '目', '耳', '足', '心'];
+            
+            for (let i = 0; i < 15; i++) {
+                setTimeout(() => {
+                    createFloatingChar(canvas, chars);
+                }, i * 1500);
+            }
+            
+            setInterval(() => {
+                createFloatingChar(canvas, chars);
+            }, 2000);
+        }
+        
+        function createFloatingChar(container, chars) {
+            const char = document.createElement('div');
+            char.className = 'floating-char';
+            char.textContent = chars[Math.floor(Math.random() * chars.length)];
+            char.style.left = Math.random() * 100 + '%';
+            char.style.fontSize = (Math.random() * 60 + 40) + 'px';
+            char.style.animationDuration = (Math.random() * 15 + 15) + 's';
+            container.appendChild(char);
+            
+            setTimeout(() => char.remove(), 25000);
+        }
+        
+        // 计时器
+        function startTimer() {
+            const totalTime = 900;
+            state.timer = setInterval(() => {
+                state.timeLeft--;
+                
+                const minutes = Math.floor(state.timeLeft / 60);
+                const seconds = state.timeLeft % 60;
+                document.getElementById('timerText').textContent = 
+                    `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                
+                const progress = (state.timeLeft / totalTime) * 100;
+                document.getElementById('timerRing').style.setProperty('--progress', progress + '%');
+                
+                if (state.timeLeft <= 0) {
+                    clearInterval(state.timer);
+                    showResult();
+                }
+            }, 1000);
+        }
+        
+        // 切换关卡
+        function showSection(id) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            setTimeout(() => {
+                document.getElementById(id).classList.add('active');
+            }, 100);
+        }
+        
+        // 更新分数
+        function updateScore(points) {
+            state.score += points;
+            document.getElementById('scoreDisplay').textContent = state.score;
+            
+            // 分数弹出动画
+            const popup = document.createElement('div');
+            popup.className = 'score-popup';
+            popup.textContent = '+' + points;
+            popup.style.left = '50%';
+            popup.style.top = '20px';
+            popup.style.transform = 'translateX(-50%)';
+            document.body.appendChild(popup);
+            setTimeout(() => popup.remove(), 1000);
+        }
+        
+        // 开始游戏
+        function startGame() {
+            state = {
+                currentLevel: 1,
+                score: 0,
+                timeLeft: 900,
+                timer: null,
+                selectedChar: null,
+                matchedPairs: [],
+                levelScores: [0, 0, 0],
+                levelTimes: [0, 0, 0]
+            };
+            
+            document.getElementById('scoreDisplay').textContent = '0';
+            document.getElementById('progressFill').style.width = '0%';
+            
+            initLevel1();
+            showSection('level1');
+            startTimer();
+        }
+        
+        // 第一关：初始化
+        function initLevel1() {
+            const charColumn = document.getElementById('charColumn');
+            const picColumn = document.getElementById('picColumn');
+            charColumn.innerHTML = '';
+            picColumn.innerHTML = '';
+            state.matchedPairs = [];
+            state.selectedChar = null;
+            
+            // 随机排列
+            const shuffledChars = [...gameData.level1.chars].sort(() => Math.random() - 0.5);
+            const shuffledPics = [...gameData.level1.chars].sort(() => Math.random() - 0.5);
+            
+            shuffledChars.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'match-item';
+                div.dataset.char = item.char;
+                div.textContent = item.char;
+                div.onclick = () => selectChar(div);
+                charColumn.appendChild(div);
+            });
+            
+            shuffledPics.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'match-item';
+                div.dataset.pic = item.char;
+                div.innerHTML = `<span class="text-2xl">${item.pic}</span><br><span class="text-sm" style="color: var(--muted);">${item.desc}</span>`;
+                div.onclick = () => selectPic(div);
+                picColumn.appendChild(div);
+            });
+            
+            document.getElementById('matchCount').textContent = '0';
+        }
+        
+        function selectChar(element) {
+            if (element.classList.contains('matched')) return;
+            
+            document.querySelectorAll('#charColumn .match-item').forEach(el => el.classList.remove('selected'));
+            element.classList.add('selected');
+            state.selectedChar = element.dataset.char;
+        }
+        
+        function selectPic(element) {
+            if (element.classList.contains('matched') || !state.selectedChar) return;
+            
+            const picChar = element.dataset.pic;
+            
+            if (state.selectedChar === picChar) {
+                // 正确匹配
+                const charEl = document.querySelector(`#charColumn .match-item[data-char="${state.selectedChar}"]`);
+                charEl.classList.remove('selected');
+                charEl.classList.add('matched');
+                element.classList.add('matched');
+                
+                state.matchedPairs.push(state.selectedChar);
+                document.getElementById('matchCount').textContent = state.matchedPairs.length;
+                
+                updateScore(20);
+                createStars(element);
+                
+                if (state.matchedPairs.length === 5) {
+                    setTimeout(() => {
+                        state.levelScores[0] = state.matchedPairs.length * 20 + 20;
+                        initLevel2();
+                        showSection('level2');
+                        document.getElementById('progressFill').style.width = '33%';
+                    }, 500);
+                }
+            } else {
+                // 错误匹配
+                element.classList.add('wrong');
+                setTimeout(() => element.classList.remove('wrong'), 500);
+            }
+            
+            state.selectedChar = null;
+            document.querySelectorAll('#charColumn .match-item').forEach(el => el.classList.remove('selected'));
+        }
+        
+        // 第二关：初始化
+        function initLevel2() {
+            const list = document.getElementById('sentenceList');
+            list.innerHTML = '';
+            
+            // 真正的错别字题目
+            const questions = [
+                { sentence: '我每天都要喝开氷', wrong: '氷', correct: '水' },
+                { sentence: '今天的大刧很圆很亮', wrong: '刧', correct: '月' },
+                { sentence: '森林里冒着熊熊大伙', wrong: '伙', correct: '火' },
+                { sentence: '小鸟在树上唱哥', wrong: '哥', correct: '歌' }
+            ];
+            
+            questions.forEach((q, index) => {
+                const div = document.createElement('div');
+                div.className = 'mb-6';
+                
+                const sentenceHtml = q.sentence.replace(q.wrong, 
+                    `<span class="wrong-char" data-correct="${q.correct}">${q.wrong}</span>`);
+                
+                div.innerHTML = `
+                    <div class="sentence-box mb-3">
+                        <span class="text-sm" style="color: var(--muted);">第${index + 1}句：</span>
+                        ${sentenceHtml}
+                    </div>
+                    <div class="flex gap-3 items-center">
+                        <input type="text" class="input-field flex-1" id="correct${index}" 
+                            placeholder="输入正确的字" maxlength="1" data-answer="${q.correct}">
+                        <button class="px-4 py-3 rounded-lg font-bold transition-all" 
+                            style="background: var(--bg-light); border: 2px solid var(--border);"
+                            onclick="checkCorrection(${index}, this)">确定</button>
+                    </div>
+                `;
+                list.appendChild(div);
+            });
+        }
+        
+        function checkCorrection(index, btn) {
+            const input = document.getElementById(`correct${index}`);
+            const answer = input.dataset.answer;
+            const value = input.value.trim();
+            
+            if (value === answer) {
+                input.classList.add('correct');
+                input.disabled = true;
+                btn.disabled = true;
+                btn.style.background = 'var(--success)';
+                btn.textContent = '正确';
+                updateScore(25);
+                createStars(input);
+                
+                // 检查是否完成
+                const allCorrect = document.querySelectorAll('#sentenceList input.correct').length;
+                if (allCorrect === 4) {
+                    setTimeout(() => {
+                        state.levelScores[1] = allCorrect * 25;
+                        initLevel3();
+                        showSection('level3');
+                        document.getElementById('progressFill').style.width = '66%';
+                    }, 500);
+                }
+            } else {
+                input.classList.add('incorrect');
+                setTimeout(() => input.classList.remove('incorrect'), 500);
+            }
+        }
+        
+        // 第三关：初始化
+        function initLevel3() {
+            const charsContainer = document.getElementById('wordChars');
+            const inputsContainer = document.getElementById('wordInputs');
+            charsContainer.innerHTML = '';
+            inputsContainer.innerHTML = '';
+            
+            gameData.level3.forEach((item, index) => {
+                const charSpan = document.createElement('span');
+                charSpan.className = 'px-4 py-2 rounded-lg text-xl font-bold';
+                charSpan.style.background = 'var(--accent)';
+                charSpan.style.color = 'white';
+                charSpan.textContent = item.char;
+                charsContainer.appendChild(charSpan);
+                
+                const inputDiv = document.createElement('div');
+                inputDiv.className = 'flex gap-3 items-center';
+                inputDiv.innerHTML = `
+                    <span class="w-12 text-xl font-bold text-center">${item.char}</span>
+                    <input type="text" class="input-field flex-1" id="word${index}" 
+                        placeholder="输入词语（如：大山）" data-answers="${item.answers.join(',')}" 
+                        data-char="${item.char}">
+                `;
+                inputsContainer.appendChild(inputDiv);
+            });
+        }
+        
+        function submitWords() {
+            let correctCount = 0;
+            
+            gameData.level3.forEach((item, index) => {
+                const input = document.getElementById(`word${index}`);
+                const answers = input.dataset.answers.split(',');
+                const value = input.value.trim();
+                
+                if (answers.includes(value)) {
+                    input.classList.add('correct');
+                    correctCount++;
+                    updateScore(15);
+                } else {
+                    input.classList.add('incorrect');
+                }
+            });
+            
+            setTimeout(() => {
+                state.levelScores[2] = correctCount * 15;
+                showResult();
+            }, 800);
+        }
+        
+        // 显示结果
+        function showResult() {
+            clearInterval(state.timer);
+            document.getElementById('progressFill').style.width = '100%';
+            
+            const timeUsed = 900 - state.timeLeft;
+            const minutes = Math.floor(timeUsed / 60);
+            const seconds = timeUsed % 60;
+            
+            document.getElementById('finalScoreDisplay').textContent = state.score;
+            
+            const details = document.getElementById('resultDetails');
+            details.innerHTML = `
+                <div class="flex justify-between items-center p-4 rounded-lg" style="background: var(--bg-light);">
+                    <span>第一关：汉字配对</span>
+                    <span style="color: var(--gold);">+${state.levelScores[0]}分</span>
+                </div>
+                <div class="flex justify-between items-center p-4 rounded-lg" style="background: var(--bg-light);">
+                    <span>第二关：火眼金睛</span>
+                    <span style="color: var(--gold);">+${state.levelScores[1]}分</span>
+                </div>
+                <div class="flex justify-between items-center p-4 rounded-lg" style="background: var(--bg-light);">
+                    <span>第三关：组词达人</span>
+                    <span style="color: var(--gold);">+${state.levelScores[2]}分</span>
+                </div>
+                <div class="flex justify-between items-center p-4 rounded-lg" style="background: var(--bg-light);">
+                    <span>用时</span>
+                    <span style="color: var(--accent);">${minutes}分${seconds}秒</span>
+                </div>
+            `;
+            
+            // 排行榜
+            const rankings = [
+                { name: '小明星', score: 180, time: '8分25秒' },
+                { name: '小天才', score: 165, time: '9分10秒' },
+                { name: '小能手', score: 150, time: '10分05秒' },
+                { name: '你', score: state.score, time: `${minutes}分${seconds}秒`, isYou: true }
+            ].sort((a, b) => b.score - a.score);
+            
+            const rankingList = document.getElementById('rankingList');
+            rankingList.innerHTML = rankings.map((r, i) => `
+                <div class="rank-item ${r.isYou ? 'border-2' : ''}" style="${r.isYou ? 'border-color: var(--accent);' : ''}">
+                    <div class="rank-badge ${i < 3 ? 'rank-' + (i + 1) : 'rank-other'}">${i + 1}</div>
+                    <div class="flex-1">
+                        <div class="font-bold">${r.name}</div>
+                        <div class="text-sm" style="color: var(--muted);">用时 ${r.time}</div>
+                    </div>
+                    <div class="text-xl font-bold" style="color: var(--gold);">${r.score}分</div>
+                </div>
+            `).join('');
+            
+            showSection('result');
+            createStars(document.getElementById('finalScoreDisplay'));
+        }
+        
+        // 重置游戏
+        function resetGame() {
+            state = {
+                currentLevel: 0,
+                score: 0,
+                timeLeft: 900,
+                timer: null,
+                selectedChar: null,
+                matchedPairs: [],
+                levelScores: [0, 0, 0],
+                levelTimes: [0, 0, 0]
+            };
+            
+            document.getElementById('scoreDisplay').textContent = '0';
+            document.getElementById('timerText').textContent = '15:00';
+            document.getElementById('timerRing').style.setProperty('--progress', '100%');
+            document.getElementById('progressFill').style.width = '0%';
+            
+            showSection('home');
+        }
+        
+        // 创建星星特效
+        function createStars(element) {
+            const rect = element.getBoundingClientRect();
+            const container = document.getElementById('starsContainer');
+            
+            for (let i = 0; i < 8; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                star.style.left = (rect.left + rect.width / 2 + (Math.random() - 0.5) * 100) + 'px';
+                star.style.top = (rect.top + (Math.random() - 0.5) * 50) + 'px';
+                star.style.animationDelay = (Math.random() * 0.3) + 's';
+                container.appendChild(star);
+                
+                setTimeout(() => star.remove(), 1500);
+            }
+        }
+        
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            initFloatingChars();
+        });
+    </script>
+</body>
+</html>
